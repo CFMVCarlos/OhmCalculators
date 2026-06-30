@@ -1,0 +1,4 @@
+## 2024-06-30 - Missing Input Validation Exposing Stack Traces
+**Vulnerability:** The `voltage_divider_calculations` function lacked input validation for edge cases like zero resistance or equal input/output voltages, leading to unhandled `ZeroDivisionError` exceptions. Unhandled exceptions can expose internal application details through stack traces, a common security risk (Information Exposure).
+**Learning:** Mathematical operations involving user-provided inputs must explicitly check for boundary conditions (like division by zero) and physically impossible states (like negative resistance) to prevent unhandled exceptions and potential denial of service or information leakage.
+**Prevention:** Always validate inputs before using them in calculations. Ensure that user-facing functions fail gracefully with safe, informative error messages (like `ValueError`) rather than propagating system-level exceptions.

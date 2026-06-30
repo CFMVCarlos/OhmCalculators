@@ -26,6 +26,11 @@ def voltage_divider_calculations(
         ValueError: If there is insufficient data to perform the calculation or too many arguments are provided.
     """
 
+    # Input validation
+    for name, value in [("Vin", vin), ("Vout", vout), ("R1", r1), ("R2", r2)]:
+        if value is not None and value < 0:
+            raise ValueError(f"{name} cannot be negative.")
+
     # If Vin is not provided, calculate Vin based on the other values
     if vin is None:
         # Ensure vout, r1, and r2 are provided to calculate Vin
@@ -33,6 +38,8 @@ def voltage_divider_calculations(
             raise ValueError(
                 "Insufficient data to calculate Vin. Provide Vout, R1, and R2."
             )
+        if r2 == 0:
+            raise ValueError("R2 cannot be zero when calculating Vin.")
         # Calculate Vin using the rearranged voltage divider formula: Vin = Vout * (R1 + R2) / R2
         return vout * (r1 + r2) / r2
 
@@ -43,6 +50,8 @@ def voltage_divider_calculations(
             raise ValueError(
                 "Insufficient data to calculate Vout. Provide Vin, R1, and R2."
             )
+        if r1 + r2 == 0:
+            raise ValueError("The sum of R1 and R2 cannot be zero.")
         # Calculate Vout using the voltage divider formula: Vout = Vin * (R2 / (R1 + R2))
         return vin * (r2 / (r1 + r2))
 
@@ -53,6 +62,8 @@ def voltage_divider_calculations(
             raise ValueError(
                 "Insufficient data to calculate R1. Provide Vout, Vin, and R2."
             )
+        if vin == vout:
+            raise ValueError("Vin and Vout cannot be equal when calculating R1.")
         # Calculate R1 using the rearranged formula: R1 = (Vout * R2) / (Vin - Vout)
         return vout * r2 / (vin - vout)
 
@@ -63,6 +74,8 @@ def voltage_divider_calculations(
             raise ValueError(
                 "Insufficient data to calculate R2. Provide Vout, Vin, and R1."
             )
+        if vin == vout:
+            raise ValueError("Vin and Vout cannot be equal when calculating R2.")
         # Calculate R2 using the rearranged formula: R2 = (Vout * R1) / (Vin - Vout)
         return vout * r1 / (vin - vout)
 
