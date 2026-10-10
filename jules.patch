@@ -1,0 +1,685 @@
+diff --git a/lib/voltage_divider_calculations.py b/lib/voltage_divider_calculations.py
+index 91f3430..10aab7f 100644
+--- a/lib/voltage_divider_calculations.py
++++ b/lib/voltage_divider_calculations.py
+@@ -26,45 +26,41 @@ def voltage_divider_calculations(
+         ValueError: If there is insufficient data to perform the calculation or too many arguments are provided.
+     """
+ 
++    inputs = [x is not None for x in (vin, vout, r1, r2)]
++    if sum(inputs) > 3:
++        raise ValueError(
++            "Too many arguments provided. Provide at most three parameters."
++        )
++    if sum(inputs) < 3:
++        raise ValueError("Insufficient data. Provide exactly three parameters.")
++
++    if r1 is not None and r1 < 0:
++        raise ValueError("Resistance R1 cannot be negative.")
++    if r2 is not None and r2 < 0:
++        raise ValueError("Resistance R2 cannot be negative.")
++
+     # If Vin is not provided, calculate Vin based on the other values
+     if vin is None:
+-        # Ensure vout, r1, and r2 are provided to calculate Vin
+-        if vout is None or r1 is None or r2 is None:
+-            raise ValueError(
+-                "Insufficient data to calculate Vin. Provide Vout, R1, and R2."
+-            )
+-        # Calculate Vin using the rearranged voltage divider formula: Vin = Vout * (R1 + R2) / R2
+-        return vout * (r1 + r2) / r2
++        if r2 == 0:
++            raise ValueError("Resistance R2 cannot be zero when calculating Vin.")
++        return vout * (r1 + r2) / r2  # type: ignore
+ 
+     # If Vout is not provided, calculate Vout based on the other values
+     if vout is None:
+-        # Ensure vin, r1, and r2 are provided to calculate Vout
+-        if vin is None or r1 is None or r2 is None:
+-            raise ValueError(
+-                "Insufficient data to calculate Vout. Provide Vin, R1, and R2."
+-            )
+-        # Calculate Vout using the voltage divider formula: Vout = Vin * (R2 / (R1 + R2))
+-        return vin * (r2 / (r1 + r2))
++        if r1 + r2 == 0:  # type: ignore
++            raise ValueError("Total resistance (R1 + R2) cannot be zero.")
++        return vin * (r2 / (r1 + r2))  # type: ignore
+ 
+     # If R1 is not provided, calculate R1 based on the other values
+     if r1 is None:
+-        # Ensure vout, vin, and r2 are provided to calculate R1
+-        if vout is None or vin is None or r2 is None:
+-            raise ValueError(
+-                "Insufficient data to calculate R1. Provide Vout, Vin, and R2."
+-            )
+-        # Calculate R1 using the rearranged formula: R1 = (Vout * R2) / (Vin - Vout)
+-        return vout * r2 / (vin - vout)
++        if vin == vout:
++            raise ValueError("Vin and Vout cannot be equal when calculating R1.")
++        return vout * r2 / (vin - vout)  # type: ignore
+ 
+     # If R2 is not provided, calculate R2 based on the other values
+     if r2 is None:
+-        # Ensure vout, vin, and r1 are provided to calculate R2
+-        if vout is None or vin is None or r1 is None:
+-            raise ValueError(
+-                "Insufficient data to calculate R2. Provide Vout, Vin, and R1."
+-            )
+-        # Calculate R2 using the rearranged formula: R2 = (Vout * R1) / (Vin - Vout)
+-        return vout * r1 / (vin - vout)
++        if vin == vout:
++            raise ValueError("Vin and Vout cannot be equal when calculating R2.")
++        return vout * r1 / (vin - vout)  # type: ignore
+ 
+-    # If all four parameters are provided, raise an error because too many arguments are given
+-    raise ValueError("Too many arguments provided. Provide at most three parameters.")
++    return None
+diff --git a/src/main.py b/src/main.py
+new file mode 100644
+index 0000000..bb5adaf
+--- /dev/null
++++ b/src/main.py
+@@ -0,0 +1,64 @@
++from fastapi import FastAPI, Request
++from fastapi.responses import JSONResponse
++from fastapi.exceptions import RequestValidationError
++from fastapi.staticfiles import StaticFiles
++from fastapi.templating import Jinja2Templates
++from src.routes.api import router as api_router
++from starlette.exceptions import HTTPException as StarletteHTTPException
++import sys
++from pathlib import Path
++import uvicorn
++
++# Setup path for jinja templates
++BASE_DIR = Path(__file__).resolve().parent
++
++app = FastAPI(
++    title="OhmCalculators API",
++    description="API for calculating voltage dividers and optimal resistor combinations",
++    version="1.0.0",
++)
++
++
++# Global exception handlers to never expose stack traces to clients
++@app.exception_handler(StarletteHTTPException)
++async def http_exception_handler(request: Request, exc: StarletteHTTPException):
++    return JSONResponse(
++        status_code=exc.status_code,
++        content={"status": "error", "message": exc.detail, "code": exc.status_code},
++    )
++
++
++@app.exception_handler(RequestValidationError)
++async def validation_exception_handler(request: Request, exc: RequestValidationError):
++    errors = exc.errors()
++    msg = errors[0]["msg"] if errors else "Invalid request data"
++    if msg.startswith("Value error, "):
++        msg = msg.replace("Value error, ", "")
++    return JSONResponse(
++        status_code=422, content={"status": "error", "message": msg, "code": 422}
++    )
++
++
++@app.exception_handler(Exception)
++async def global_exception_handler(request: Request, exc: Exception):
++    return JSONResponse(
++        status_code=500,
++        content={"status": "error", "message": "Internal server error.", "code": 500},
++    )
++
++
++# Include API router
++app.include_router(api_router, prefix="/api")
++
++# Static files and templates setup
++app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
++templates = Jinja2Templates(directory=str(BASE_DIR / "static/templates"))
++
++
++@app.get("/")
++async def serve_frontend(request: Request):
++    return templates.TemplateResponse(request, "index.html")
++
++
++if __name__ == "__main__":
++    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+diff --git a/src/models/requests.py b/src/models/requests.py
+new file mode 100644
+index 0000000..b041166
+--- /dev/null
++++ b/src/models/requests.py
+@@ -0,0 +1,71 @@
++from pydantic import BaseModel, model_validator
++from typing import Optional
++
++
++class VoltageDividerRequest(BaseModel):
++    vin: Optional[float] = None
++    vout: Optional[float] = None
++    r1: Optional[float] = None
++    r2: Optional[float] = None
++
++    @model_validator(mode="after")
++    def check_inputs(self):
++        provided = sum(
++            [
++                self.vin is not None,
++                self.vout is not None,
++                self.r1 is not None,
++                self.r2 is not None,
++            ]
++        )
++        if provided < 3:
++            raise ValueError("Insufficient data. Provide exactly three parameters.")
++        if provided > 3:
++            raise ValueError(
++                "Too many arguments provided. Provide at most three parameters."
++            )
++
++        # Validation rules based on calculations
++        if self.r1 is None and self.vin == self.vout:
++            raise ValueError("Vin and Vout cannot be equal when calculating R1.")
++        if self.r2 is None and self.vin == self.vout:
++            raise ValueError("Vin and Vout cannot be equal when calculating R2.")
++        if self.vin is None and self.r2 == 0:
++            raise ValueError("Resistance R2 cannot be zero when calculating Vin.")
++        if self.vout is None and self.r1 == 0 and self.r2 == 0:
++            raise ValueError("Total resistance (R1 + R2) cannot be zero.")
++
++        if self.r1 is not None and self.r1 < 0:
++            raise ValueError("Resistance R1 cannot be negative.")
++        if self.r2 is not None and self.r2 < 0:
++            raise ValueError("Resistance R2 cannot be negative.")
++
++        return self
++
++
++class TargetResistanceRequest(BaseModel):
++    target_value: float
++
++    @model_validator(mode="after")
++    def check_target(self):
++        if self.target_value <= 0:
++            raise ValueError("Target resistance must be greater than 0.")
++        return self
++
++
++class ResistorDivRequest(BaseModel):
++    vin: float
++    vout: float
++    maximum_current: float
++
++    @model_validator(mode="after")
++    def check_voltages(self):
++        if self.vin <= 0:
++            raise ValueError("Vin must be greater than 0.")
++        if self.vout < 0:
++            raise ValueError("Vout cannot be negative.")
++        if self.maximum_current <= 0:
++            raise ValueError("Maximum current must be greater than 0.")
++        if self.vout >= self.vin:
++            raise ValueError("Vout must be less than Vin in a passive voltage divider.")
++        return self
+diff --git a/src/routes/api.py b/src/routes/api.py
+new file mode 100644
+index 0000000..c8244bc
+--- /dev/null
++++ b/src/routes/api.py
+@@ -0,0 +1,83 @@
++from fastapi import APIRouter, HTTPException
++from src.models.requests import (
++    VoltageDividerRequest,
++    TargetResistanceRequest,
++    ResistorDivRequest,
++)
++from src.services.calculator import (
++    calculate_voltage_divider,
++    calculate_best_parallel,
++    calculate_divider_resistors,
++)
++from lib.common import convert_to_shorthand
++
++router = APIRouter()
++
++
++@router.post("/calculate-missing")
++async def calculate_missing(request: VoltageDividerRequest):
++    try:
++        result = calculate_voltage_divider(
++            vin=request.vin, vout=request.vout, r1=request.r1, r2=request.r2
++        )
++        # Find which parameter was calculated
++        missing_param = None
++        if request.vin is None:
++            missing_param = "vin"
++        elif request.vout is None:
++            missing_param = "vout"
++        elif request.r1 is None:
++            missing_param = "r1"
++        elif request.r2 is None:
++            missing_param = "r2"
++
++        return {
++            "status": "success",
++            "data": {"calculated_parameter": missing_param, "value": result},
++        }
++    except ValueError as e:
++        raise HTTPException(status_code=400, detail=str(e))
++    except Exception as e:
++        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
++
++
++@router.post("/best-parallel")
++async def best_parallel(request: TargetResistanceRequest):
++    try:
++        r1, r2, error = calculate_best_parallel(request.target_value)
++        return {
++            "status": "success",
++            "data": {
++                "r1": r1,
++                "r1_shorthand": convert_to_shorthand(r1),
++                "r2": r2,
++                "r2_shorthand": convert_to_shorthand(r2),
++                "error": error,
++            },
++        }
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=str(e))
++
++
++@router.post("/divider-resistors")
++async def divider_resistors(request: ResistorDivRequest):
++    try:
++        r1, r2, error, current = calculate_divider_resistors(
++            request.vin, request.vout, request.maximum_current
++        )
++        return {
++            "status": "success",
++            "data": {
++                "r1": r1,
++                "r1_shorthand": convert_to_shorthand(r1),
++                "r2": r2,
++                "r2_shorthand": convert_to_shorthand(r2),
++                "error": error,
++                "current_amps": current,
++                "current_ma": current * 1000,
++            },
++        }
++    except ValueError as e:
++        raise HTTPException(status_code=400, detail=str(e))
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=str(e))
+diff --git a/src/services/calculator.py b/src/services/calculator.py
+new file mode 100644
+index 0000000..42d9043
+--- /dev/null
++++ b/src/services/calculator.py
+@@ -0,0 +1,22 @@
++import sys
++from pathlib import Path
++
++sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
++
++from collections.abc import Generator
++from lib.e24_resistor_values import all_resistor_values
++from lib.voltage_divider_calculations import voltage_divider_calculations
++from closest_parallel_resistors import find_best_parallel_combination
++from voltage_divider_resistors_calculator import find_resistor_values
++
++
++def calculate_voltage_divider(vin=None, vout=None, r1=None, r2=None):
++    return voltage_divider_calculations(vin=vin, vout=vout, r1=r1, r2=r2)
++
++
++def calculate_best_parallel(target_value: float):
++    return find_best_parallel_combination(target_value)
++
++
++def calculate_divider_resistors(vin: float, vout: float, max_current: float):
++    return find_resistor_values(vin, vout, max_current)
+diff --git a/src/static/css/styles.css b/src/static/css/styles.css
+new file mode 100644
+index 0000000..90b3d5b
+--- /dev/null
++++ b/src/static/css/styles.css
+@@ -0,0 +1,55 @@
++/* Custom base styles */
++body {
++    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
++}
++
++/* Skeleton Loader CSS */
++.loader {
++    border: 3px solid rgba(255, 255, 255, 0.3);
++    border-radius: 50%;
++    border-top: 3px solid #ffffff;
++    width: 20px;
++    height: 20px;
++    -webkit-animation: spin 1s linear infinite; /* Safari */
++    animation: spin 1s linear infinite;
++}
++
++@keyframes spin {
++    0% { transform: rotate(0deg); }
++    100% { transform: rotate(360deg); }
++}
++
++/* Toast Animations */
++.toast-enter {
++    transform: translateX(100%);
++    opacity: 0;
++}
++.toast-enter-active {
++    transform: translateX(0);
++    opacity: 1;
++    transition: all 0.3s ease-out;
++}
++.toast-leave {
++    transform: translateX(0);
++    opacity: 1;
++}
++.toast-leave-active {
++    transform: translateX(100%);
++    opacity: 0;
++    transition: all 0.3s ease-in;
++}
++
++.toast {
++    padding: 12px 20px;
++    border-radius: 8px;
++    color: white;
++    font-weight: 500;
++    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
++    display: flex;
++    align-items: center;
++    gap: 12px;
++    min-width: 300px;
++}
++
++.toast-error { background-color: #ef4444; } /* red-500 */
++.toast-success { background-color: #10b981; } /* emerald-500 */
+diff --git a/src/static/js/app.js b/src/static/js/app.js
+new file mode 100644
+index 0000000..d843676
+--- /dev/null
++++ b/src/static/js/app.js
+@@ -0,0 +1,125 @@
++function showToast(message, type = 'error') {
++    const container = document.getElementById('toast-container');
++    const toast = document.createElement('div');
++    
++    toast.className = `toast toast-${type} toast-enter`;
++    toast.innerHTML = `
++        <span>${message}</span>
++        <button onclick="this.parentElement.remove()" class="ml-auto focus:outline-none">
++            <svg class="w-4 h-4 opacity-75 hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
++            </svg>
++        </button>
++    `;
++    
++    container.appendChild(toast);
++    
++    // Trigger animation
++    requestAnimationFrame(() => {
++        toast.classList.remove('toast-enter');
++        toast.classList.add('toast-enter-active');
++    });
++
++    // Auto remove
++    setTimeout(() => {
++        toast.classList.add('toast-leave-active');
++        setTimeout(() => toast.remove(), 300);
++    }, 5000);
++}
++
++function appData() {
++    return {
++        activeTab: 'missing',
++        loading: false,
++        result: null,
++        resultHtml: '',
++        
++        missingForm: { vin: null, vout: null, r1: null, r2: null },
++        parallelForm: { target_value: null },
++        dividerForm: { vin: null, vout: null, maximum_current: null },
++
++        async submitRequest(url, payload, formatCallback) {
++            this.loading = true;
++            this.result = null;
++            this.resultHtml = '';
++            
++            try {
++                const response = await fetch(url, {
++                    method: 'POST',
++                    headers: { 'Content-Type': 'application/json' },
++                    body: JSON.stringify(payload)
++                });
++                
++                const data = await response.json();
++                
++                if (!response.ok) {
++                    throw new Error(data.message || 'An error occurred');
++                }
++                
++                this.result = data.data;
++                this.resultHtml = formatCallback(data.data);
++                
++            } catch (error) {
++                showToast(error.message, 'error');
++            } finally {
++                this.loading = false;
++            }
++        },
++
++        calculateMissing() {
++            // Clean payload
++            const payload = {
++                vin: this.missingForm.vin === '' ? null : this.missingForm.vin,
++                vout: this.missingForm.vout === '' ? null : this.missingForm.vout,
++                r1: this.missingForm.r1 === '' ? null : this.missingForm.r1,
++                r2: this.missingForm.r2 === '' ? null : this.missingForm.r2,
++            };
++            
++            this.submitRequest('/api/calculate-missing', payload, (data) => {
++                return `
++                    <div class="grid grid-cols-2 gap-4">
++                        <div class="font-semibold capitalize">${data.calculated_parameter}:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.value.toFixed(4)}</div>
++                    </div>
++                `;
++            });
++        },
++
++        calculateParallel() {
++            this.submitRequest('/api/best-parallel', this.parallelForm, (data) => {
++                return `
++                    <div class="grid grid-cols-2 gap-y-3 gap-x-4">
++                        <div class="font-semibold text-slate-600">Best R1:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.r1_shorthand} (${data.r1} Ω)</div>
++                        
++                        <div class="font-semibold text-slate-600">Best R2:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.r2_shorthand} (${data.r2} Ω)</div>
++                        
++                        <div class="font-semibold text-slate-600">Error:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.error.toFixed(4)} Ω</div>
++                    </div>
++                `;
++            });
++        },
++
++        calculateDividerResistors() {
++            this.submitRequest('/api/divider-resistors', this.dividerForm, (data) => {
++                return `
++                    <div class="grid grid-cols-2 gap-y-3 gap-x-4">
++                        <div class="font-semibold text-slate-600">Best R1:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.r1_shorthand} (${data.r1} Ω)</div>
++                        
++                        <div class="font-semibold text-slate-600">Best R2:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.r2_shorthand} (${data.r2} Ω)</div>
++                        
++                        <div class="font-semibold text-slate-600">Error:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.error.toFixed(4)} V</div>
++                        
++                        <div class="font-semibold text-slate-600">Current:</div>
++                        <div class="font-mono bg-white px-3 py-1 rounded border shadow-sm">${data.current_ma.toFixed(4)} mA</div>
++                    </div>
++                `;
++            });
++        }
++    }
++}
+diff --git a/src/static/templates/index.html b/src/static/templates/index.html
+new file mode 100644
+index 0000000..0c7754f
+--- /dev/null
++++ b/src/static/templates/index.html
+@@ -0,0 +1,145 @@
++<!DOCTYPE html>
++<html lang="en" class="antialiased">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <title>OhmCalculators</title>
++    <script src="https://cdn.tailwindcss.com"></script>
++    <script>
++        tailwind.config = {
++            theme: {
++                extend: {
++                    colors: {
++                        primary: '#3b82f6', // blue-500
++                        primaryHover: '#2563eb', // blue-600
++                    }
++                }
++            }
++        }
++    </script>
++    <link href="/static/css/styles.css" rel="stylesheet">
++    <!-- Load Alpine.js for lightweight reactivity -->
++    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
++</head>
++<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col items-center justify-center py-10 px-4">
++
++    <!-- Toast Notification Area -->
++    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
++
++    <main class="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-8 relative overflow-hidden" x-data="appData()">
++        <!-- Background Pattern -->
++        <div class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-30 pointer-events-none"></div>
++
++        <div class="relative z-10">
++            <header class="mb-10 text-center">
++                <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight">OhmCalculators</h1>
++                <p class="text-slate-500 mt-2 text-lg">Precision resistor and voltage calculations</p>
++            </header>
++
++            <!-- Tabs -->
++            <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl mb-8">
++                <button 
++                    @click="activeTab = 'missing'" 
++                    :class="activeTab === 'missing' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
++                    class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all">
++                    Missing Parameter
++                </button>
++                <button 
++                    @click="activeTab = 'parallel'" 
++                    :class="activeTab === 'parallel' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
++                    class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all">
++                    Best Parallel
++                </button>
++                <button 
++                    @click="activeTab = 'divider'" 
++                    :class="activeTab === 'divider' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
++                    class="flex-1 py-2.5 text-sm font-medium rounded-lg transition-all">
++                    Divider Resistors
++                </button>
++            </div>
++
++            <!-- Content Area -->
++            <div class="min-h-[300px]">
++                
++                <!-- 1. Missing Parameter Form -->
++                <div x-show="activeTab === 'missing'" x-transition.opacity.duration.300ms>
++                    <form @submit.prevent="calculateMissing" class="space-y-6">
++                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
++                            <div class="input-group">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">Vin (V)</label>
++                                <input type="number" step="any" x-model.number="missingForm.vin" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none" placeholder="Leave empty to calculate">
++                            </div>
++                            <div class="input-group">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">Vout (V)</label>
++                                <input type="number" step="any" x-model.number="missingForm.vout" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none" placeholder="Leave empty to calculate">
++                            </div>
++                            <div class="input-group">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">R1 (Ω)</label>
++                                <input type="number" step="any" x-model.number="missingForm.r1" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none" placeholder="Leave empty to calculate">
++                            </div>
++                            <div class="input-group">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">R2 (Ω)</label>
++                                <input type="number" step="any" x-model.number="missingForm.r2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none" placeholder="Leave empty to calculate">
++                            </div>
++                        </div>
++                        <button type="submit" :disabled="loading" class="w-full bg-primary hover:bg-primaryHover text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors disabled:opacity-70 flex justify-center items-center">
++                            <span x-show="!loading">Calculate Missing Value</span>
++                            <span x-show="loading" class="loader"></span>
++                        </button>
++                    </form>
++                </div>
++
++                <!-- 2. Best Parallel Form -->
++                <div x-show="activeTab === 'parallel'" x-transition.opacity.duration.300ms style="display: none;">
++                     <form @submit.prevent="calculateParallel" class="space-y-6">
++                        <div class="input-group">
++                            <label class="block text-sm font-semibold text-slate-700 mb-1">Target Resistance (Ω) <span class="text-red-500">*</span></label>
++                            <input type="number" step="any" required x-model.number="parallelForm.target_value" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none" placeholder="e.g. 4700">
++                        </div>
++                        <button type="submit" :disabled="loading" class="w-full bg-primary hover:bg-primaryHover text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors disabled:opacity-70 flex justify-center items-center">
++                            <span x-show="!loading">Find Best Combination</span>
++                            <span x-show="loading" class="loader"></span>
++                        </button>
++                    </form>
++                </div>
++
++                <!-- 3. Divider Resistors Form -->
++                <div x-show="activeTab === 'divider'" x-transition.opacity.duration.300ms style="display: none;">
++                    <form @submit.prevent="calculateDividerResistors" class="space-y-6">
++                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
++                            <div class="input-group">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">Vin (V) <span class="text-red-500">*</span></label>
++                                <input type="number" step="any" required x-model.number="dividerForm.vin" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none">
++                            </div>
++                            <div class="input-group">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">Vout (V) <span class="text-red-500">*</span></label>
++                                <input type="number" step="any" required x-model.number="dividerForm.vout" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none">
++                            </div>
++                            <div class="input-group md:col-span-2">
++                                <label class="block text-sm font-semibold text-slate-700 mb-1">Max Current (mA) <span class="text-red-500">*</span></label>
++                                <input type="number" step="any" required x-model.number="dividerForm.maximum_current" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition outline-none">
++                            </div>
++                        </div>
++                        <button type="submit" :disabled="loading" class="w-full bg-primary hover:bg-primaryHover text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors disabled:opacity-70 flex justify-center items-center">
++                            <span x-show="!loading">Calculate Resistors</span>
++                            <span x-show="loading" class="loader"></span>
++                        </button>
++                    </form>
++                </div>
++
++                <!-- Result Area -->
++                <div x-show="result" x-transition.opacity.duration.300ms class="mt-8 p-6 bg-slate-50 border border-slate-200 rounded-xl" style="display: none;">
++                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
++                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
++                        Result
++                    </h3>
++                    
++                    <div x-html="resultHtml" class="space-y-2 text-slate-700"></div>
++                </div>
++            </div>
++        </div>
++    </main>
++
++    <script src="/static/js/app.js"></script>
++</body>
++</html>
+\ No newline at end of file
+
