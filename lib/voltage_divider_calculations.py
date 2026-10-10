@@ -26,45 +26,41 @@ def voltage_divider_calculations(
         ValueError: If there is insufficient data to perform the calculation or too many arguments are provided.
     """
 
+    inputs = [x is not None for x in (vin, vout, r1, r2)]
+    if sum(inputs) > 3:
+        raise ValueError(
+            "Too many arguments provided. Provide at most three parameters."
+        )
+    if sum(inputs) < 3:
+        raise ValueError("Insufficient data. Provide exactly three parameters.")
+
+    if r1 is not None and r1 < 0:
+        raise ValueError("Resistance R1 cannot be negative.")
+    if r2 is not None and r2 < 0:
+        raise ValueError("Resistance R2 cannot be negative.")
+
     # If Vin is not provided, calculate Vin based on the other values
     if vin is None:
-        # Ensure vout, r1, and r2 are provided to calculate Vin
-        if vout is None or r1 is None or r2 is None:
-            raise ValueError(
-                "Insufficient data to calculate Vin. Provide Vout, R1, and R2."
-            )
-        # Calculate Vin using the rearranged voltage divider formula: Vin = Vout * (R1 + R2) / R2
-        return vout * (r1 + r2) / r2
+        if r2 == 0:
+            raise ValueError("Resistance R2 cannot be zero when calculating Vin.")
+        return vout * (r1 + r2) / r2  # type: ignore
 
     # If Vout is not provided, calculate Vout based on the other values
     if vout is None:
-        # Ensure vin, r1, and r2 are provided to calculate Vout
-        if vin is None or r1 is None or r2 is None:
-            raise ValueError(
-                "Insufficient data to calculate Vout. Provide Vin, R1, and R2."
-            )
-        # Calculate Vout using the voltage divider formula: Vout = Vin * (R2 / (R1 + R2))
-        return vin * (r2 / (r1 + r2))
+        if r1 + r2 == 0:  # type: ignore
+            raise ValueError("Total resistance (R1 + R2) cannot be zero.")
+        return vin * (r2 / (r1 + r2))  # type: ignore
 
     # If R1 is not provided, calculate R1 based on the other values
     if r1 is None:
-        # Ensure vout, vin, and r2 are provided to calculate R1
-        if vout is None or vin is None or r2 is None:
-            raise ValueError(
-                "Insufficient data to calculate R1. Provide Vout, Vin, and R2."
-            )
-        # Calculate R1 using the rearranged formula: R1 = (Vout * R2) / (Vin - Vout)
-        return vout * r2 / (vin - vout)
+        if vin == vout:
+            raise ValueError("Vin and Vout cannot be equal when calculating R1.")
+        return vout * r2 / (vin - vout)  # type: ignore
 
     # If R2 is not provided, calculate R2 based on the other values
     if r2 is None:
-        # Ensure vout, vin, and r1 are provided to calculate R2
-        if vout is None or vin is None or r1 is None:
-            raise ValueError(
-                "Insufficient data to calculate R2. Provide Vout, Vin, and R1."
-            )
-        # Calculate R2 using the rearranged formula: R2 = (Vout * R1) / (Vin - Vout)
-        return vout * r1 / (vin - vout)
+        if vin == vout:
+            raise ValueError("Vin and Vout cannot be equal when calculating R2.")
+        return vout * r1 / (vin - vout)  # type: ignore
 
-    # If all four parameters are provided, raise an error because too many arguments are given
-    raise ValueError("Too many arguments provided. Provide at most three parameters.")
+    return None
