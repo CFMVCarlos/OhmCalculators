@@ -71,7 +71,12 @@ def convert_resistor_value(resistor_str: str) -> int:
         ValueError: If the input string does not represent a valid resistor value.
     """
     # Define the multipliers for SI suffixes
-    suffix_multipliers = {"k": 1_000, "m": 1_000_000, "g": 1_000_000_000}
+    suffix_multipliers = {
+        "k": 1_000,
+        "m": 1_000_000,
+        "g": 1_000_000_000,
+        "r": 1,
+    }
 
     # Remove spaces and standardize the format (lowercase)
     resistor_str = resistor_str.replace(" ", "").lower()
