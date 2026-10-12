@@ -1,6 +1,7 @@
 """Main application entry point for the OhmCalculators FastAPI service."""
 
 from pathlib import Path
+from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse

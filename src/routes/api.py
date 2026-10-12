@@ -2,7 +2,7 @@
 
 from typing import Any
 from fastapi import APIRouter, HTTPException
-from lib.common import convert_to_shorthand
+from src.core.common import convert_to_shorthand
 from src.models.requests import (
     ResistorDivRequest,
     TargetResistanceRequest,

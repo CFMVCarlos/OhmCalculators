@@ -1,13 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
 from src.main import app
-from lib.voltage_divider_calculations import voltage_divider_calculations
-from lib.common import convert_to_shorthand
-from closest_parallel_resistors import (
+from src.core.voltage_divider_calculations import voltage_divider_calculations
+from src.core.common import convert_to_shorthand
+from src.core.closest_parallel_resistors import (
     find_best_parallel_combination,
     convert_resistor_value,
 )
-from voltage_divider_resistors_calculator import find_resistor_values
+from src.core.voltage_divider_resistors_calculator import find_resistor_values
 
 client = TestClient(app)
 

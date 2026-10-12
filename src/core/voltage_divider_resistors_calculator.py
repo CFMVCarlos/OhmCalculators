@@ -1,9 +1,9 @@
 """Voltage divider resistor combination calculator using standard E24 series."""
 
 from collections.abc import Generator
-from lib.voltage_divider_calculations import voltage_divider_calculations
-from lib.common import convert_to_shorthand
-from lib.e24_resistor_values import all_resistor_values
+from src.core.voltage_divider_calculations import voltage_divider_calculations
+from src.core.common import convert_to_shorthand
+from src.core.e24_resistor_values import all_resistor_values
 
 
 def find_resistor_values(

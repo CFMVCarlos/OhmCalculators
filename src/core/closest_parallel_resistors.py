@@ -1,7 +1,7 @@
 """Find optimal parallel resistor pairs from standard E24 series."""
 
-from lib.common import convert_to_shorthand
-from lib.e24_resistor_values import all_resistor_values
+from src.core.common import convert_to_shorthand
+from src.core.e24_resistor_values import all_resistor_values
 
 
 def parallel_resistance(resistors: list[float]) -> float:

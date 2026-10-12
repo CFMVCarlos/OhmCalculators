@@ -1,15 +1,10 @@
 """Calculation services wrapping domain math functions for API routes."""
 
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-
 from collections.abc import Generator
-from closest_parallel_resistors import find_best_parallel_combination
-from lib.e24_resistor_values import all_resistor_values
-from lib.voltage_divider_calculations import voltage_divider_calculations
-from voltage_divider_resistors_calculator import find_resistor_values
+from src.core.closest_parallel_resistors import find_best_parallel_combination
+from src.core.e24_resistor_values import all_resistor_values
+from src.core.voltage_divider_calculations import voltage_divider_calculations
+from src.core.voltage_divider_resistors_calculator import find_resistor_values
 
 
 def calculate_voltage_divider(
