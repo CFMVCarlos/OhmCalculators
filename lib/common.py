@@ -1,16 +1,17 @@
+"""Shared utility functions for resistor string formatting and units."""
+
 def convert_to_shorthand(number: float) -> str:
-    """
-    Convert a number to a shorthand notation with suffixes (e.g., 10000 -> '10k', 1000000 -> '1M').
+    """Convert a number to a shorthand notation with metric prefixes.
 
-    This function takes a floating-point number and converts it into a more readable format by
-    applying common metric prefixes: k (thousand), M (million), and G (billion).
-    For values smaller than 1000, the function simply returns the number as a string.
+    Parameters
+    ----------
+    number : float
+        The number to be converted to shorthand notation.
 
-    Args:
-        number (float): The number to be converted to shorthand notation.
-
-    Returns:
-        str: The shorthand notation of the input number.
+    Returns
+    -------
+    str
+        The shorthand notation of the input number.
     """
 
     # Define suffixes and their corresponding thresholds

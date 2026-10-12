@@ -1,0 +1,1 @@
+"""OhmCalculators application package initialization."""

@@ -1,18 +1,23 @@
+"""Find optimal parallel resistor pairs from standard E24 series."""
+
 from lib.common import convert_to_shorthand
 from lib.e24_resistor_values import all_resistor_values
 
 
 def parallel_resistance(resistors: list[float]) -> float:
-    """
-    Calculate the equivalent resistance of resistors connected in parallel.
+    """Calculate the equivalent resistance of resistors connected in parallel.
 
     The formula for parallel resistance is:
     1/R_eq = 1/R1 + 1/R2 + ... + 1/Rn
 
-    Args:
-        resistors: A list of resistor values (in ohms) connected in parallel.
+    Parameters
+    ----------
+    resistors : list[float]
+        A list of resistor values (in ohms) connected in parallel.
 
-    Returns:
+    Returns
+    -------
+    float
         The equivalent resistance (in ohms) of the parallel combination.
     """
     # Using the parallel resistance formula: 1/R = sum(1/R_i)
@@ -20,17 +25,17 @@ def parallel_resistance(resistors: list[float]) -> float:
 
 
 def find_best_parallel_combination(target_value: float) -> tuple[float, float, float]:
-    """
-    Find the two resistors that, when combined in parallel, provide the closest resistance to the target value.
+    """Find the two resistors that provide the closest parallel resistance.
 
-    Args:
-        target_value: The target resistance value (in ohms) that we want to approximate with two resistors in parallel.
+    Parameters
+    ----------
+    target_value : float
+        The target resistance value (in ohms) to approximate.
 
-    Returns:
-        A tuple containing:
-            - The first resistor (R1) value (in ohms).
-            - The second resistor (R2) value (in ohms).
-            - The error between the target value and the calculated parallel resistance.
+    Returns
+    -------
+    tuple[float, float, float]
+        A tuple of (best_r1, best_r2, best_error).
     """
     best_r1: float = 0.0  # Best R1 value found
     best_r2: float = 0.0  # Best R2 value found
@@ -56,19 +61,24 @@ def find_best_parallel_combination(target_value: float) -> tuple[float, float, f
 
 
 def convert_resistor_value(resistor_str: str) -> int:
-    """
-    Convert a resistor value from shorthand notation (e.g., '4k7', '4.7k') to its numerical value.
+    """Convert a resistor value from shorthand notation to numerical value.
 
     This function supports standard SI suffixes such as 'k' (kilo), 'm' (mega), and 'g' (giga).
 
-    Args:
-        resistor_str: The resistor value in shorthand notation (e.g., '4k7', '4.7k').
+    Parameters
+    ----------
+    resistor_str : str
+        The resistor value in shorthand notation (e.g., '4k7', '4.7k').
 
-    Returns:
+    Returns
+    -------
+    int
         The numerical value of the resistor (in ohms).
 
-    Raises:
-        ValueError: If the input string does not represent a valid resistor value.
+    Raises
+    ------
+    ValueError
+        If the input string does not represent a valid resistor value.
     """
     # Define the multipliers for SI suffixes
     suffix_multipliers = {

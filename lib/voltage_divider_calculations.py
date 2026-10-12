@@ -1,29 +1,33 @@
+"""Formulas for solving unknown variables in voltage divider circuits."""
+
 def voltage_divider_calculations(
     vin: float | None = None,
     vout: float | None = None,
     r1: float | None = None,
     r2: float | None = None,
 ) -> float | None:
-    """
-    Calculate a missing value in a voltage divider circuit based on the available inputs.
+    """Calculate a missing value in a voltage divider circuit.
 
-    The voltage divider equation is:
-        Vout = Vin * (R2 / (R1 + R2))  (for calculating Vout)
-        Vin = Vout * (R1 + R2) / R2    (for calculating Vin)
-        R1 = (Vout * R2) / (Vin - Vout) (for calculating R1)
-        R2 = (Vout * R1) / (Vin - Vout) (for calculating R2)
+    Parameters
+    ----------
+    vin : float | None, default=None
+        The input voltage (Vin).
+    vout : float | None, default=None
+        The output voltage (Vout).
+    r1 : float | None, default=None
+        The resistance R1 in ohms.
+    r2 : float | None, default=None
+        The resistance R2 in ohms.
 
-    Args:
-        vin: The input voltage (Vin). Optional.
-        vout: The output voltage (Vout). Optional.
-        r1: The resistance R1 in ohms. Optional.
-        r2: The resistance R2 in ohms. Optional.
+    Returns
+    -------
+    float | None
+        The calculated value based on the inputs provided.
 
-    Returns:
-        The calculated value (Vin, Vout, R1, or R2) based on the inputs provided.
-
-    Raises:
-        ValueError: If there is insufficient data to perform the calculation or too many arguments are provided.
+    Raises
+    ------
+    ValueError
+        If there is insufficient data or too many arguments provided.
     """
 
     inputs = [x is not None for x in (vin, vout, r1, r2)]

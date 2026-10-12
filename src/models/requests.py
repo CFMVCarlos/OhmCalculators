@@ -1,15 +1,43 @@
+"""Pydantic request models and validators for OhmCalculators endpoints."""
+
+from typing import Optional, Self
 from pydantic import BaseModel, model_validator
-from typing import Optional
 
 
 class VoltageDividerRequest(BaseModel):
+    """Request model for solving an unknown variable in a voltage divider.
+
+    Parameters
+    ----------
+    vin : Optional[float], default=None
+        Input voltage in volts.
+    vout : Optional[float], default=None
+        Output voltage in volts.
+    r1 : Optional[float], default=None
+        Resistance of resistor R1 in ohms.
+    r2 : Optional[float], default=None
+        Resistance of resistor R2 in ohms.
+    """
+
     vin: Optional[float] = None
     vout: Optional[float] = None
     r1: Optional[float] = None
     r2: Optional[float] = None
 
     @model_validator(mode="after")
-    def check_inputs(self):
+    def check_inputs(self) -> Self:
+        """Validate that exactly three of the four parameters are supplied.
+
+        Returns
+        -------
+        Self
+            Validated model instance.
+
+        Raises
+        ------
+        ValueError
+            If parameter count is invalid or physics constraints are violated.
+        """
         provided = sum(
             [
                 self.vin is not None,
@@ -44,28 +72,72 @@ class VoltageDividerRequest(BaseModel):
 
 
 class TargetResistanceRequest(BaseModel):
+    """Request model for approximating a target resistance with parallel resistors.
+
+    Parameters
+    ----------
+    target_value : float
+        Target resistance in ohms (must be greater than 0).
+    """
+
     target_value: float
 
     @model_validator(mode="after")
-    def check_target(self):
+    def check_target(self) -> Self:
+        """Validate that the target resistance is strictly positive.
+
+        Returns
+        -------
+        Self
+            Validated model instance.
+
+        Raises
+        ------
+        ValueError
+            If target_value is less than or equal to zero.
+        """
         if self.target_value <= 0:
             raise ValueError("Target resistance must be greater than 0.")
         return self
 
 
 class ResistorDivRequest(BaseModel):
+    """Request model for selecting standard resistors for a voltage divider.
+
+    Parameters
+    ----------
+    vin : float
+        Input voltage in volts.
+    vout : float
+        Output voltage in volts.
+    maximum_current : float
+        Maximum allowed current in milliamps.
+    """
+
     vin: float
     vout: float
     maximum_current: float
 
     @model_validator(mode="after")
-    def check_voltages(self):
+    def check_voltages(self) -> Self:
+        """Validate voltage and current constraints for divider calculation.
+
+        Returns
+        -------
+        Self
+            Validated model instance.
+
+        Raises
+        ------
+        ValueError
+            If voltages or current violate circuit feasibility.
+        """
         if self.vin <= 0:
-            raise ValueError("Vin must be greater than 0.")
-        if self.vout < 0:
-            raise ValueError("Vout cannot be negative.")
+            raise ValueError("Input voltage (vin) must be greater than 0.")
+        if self.vout <= 0:
+            raise ValueError("Output voltage (vout) must be greater than 0.")
+        if self.vout >= self.vin:
+            raise ValueError("Output voltage (vout) must be less than input voltage (vin).")
         if self.maximum_current <= 0:
             raise ValueError("Maximum current must be greater than 0.")
-        if self.vout >= self.vin:
-            raise ValueError("Vout must be less than Vin in a passive voltage divider.")
         return self

@@ -177,3 +177,10 @@ This repository is licensed under the **MIT License**. See the [LICENSE](LICENSE
 <div align="center">
   <sub>Maintained by <a href="https://github.com/CFMVCarlos">Carlos Valente</a>.</sub>
 </div>
+## Development
+
+To enable automated commit message validation with gitlint:
+```bash
+git config core.hooksPath .githooks
+```
+

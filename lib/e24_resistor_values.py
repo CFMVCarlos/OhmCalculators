@@ -1,3 +1,5 @@
+"""E24 standard series resistor base values and generator."""
+
 from collections.abc import Generator
 
 # List of base resistor values in the E24 series (values between 1 and 10)
@@ -31,17 +33,12 @@ RESISTOR_BASE_VALUES: list[float] = [
 
 
 def all_resistor_values() -> Generator[float, None, None]:
-    """
-    Generates all standard resistor values in the E24 series.
+    """Generate all standard resistor values in the E24 series.
 
-    The E24 series includes resistors with base values that are multiplied by powers of 10
-    (1, 10, 100, etc.) to produce a range of resistor values. This generator yields each of these values
-    rounded to one decimal place.
-
-    The standard E24 values range from 1 ohm to 9.1 megaohms and follow a logarithmic scale.
-
-    Yields:
-        float: The next resistor value in the E24 series.
+    Yields
+    ------
+    float
+        The next resistor value in the E24 series.
     """
     # Loop through six powers of 10 (1, 10, 100, 1000, 10000, 100000)
     for i in range(6):

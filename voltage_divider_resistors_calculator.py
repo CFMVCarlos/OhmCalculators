@@ -1,3 +1,5 @@
+"""Voltage divider resistor combination calculator using standard E24 series."""
+
 from collections.abc import Generator
 from lib.voltage_divider_calculations import voltage_divider_calculations
 from lib.common import convert_to_shorthand
@@ -7,22 +9,21 @@ from lib.e24_resistor_values import all_resistor_values
 def find_resistor_values(
     vin: float, vout: float, maximum_current: float
 ) -> tuple[float, float, float, float]:
-    """
-    Finds the best resistor values for a voltage divider circuit that approximates
-    the desired output voltage (vout) from the input voltage (vin) while ensuring
-    the current doesn't exceed the specified maximum_current.
+    """Find the best resistor values for a voltage divider circuit.
 
-    Args:
-        vin: The input voltage (in volts).
-        vout: The desired output voltage (in volts).
-        maximum_current: The maximum allowable current through the voltage divider (in milliamps).
+    Parameters
+    ----------
+    vin : float
+        The input voltage (in volts).
+    vout : float
+        The desired output voltage (in volts).
+    maximum_current : float
+        The maximum allowable current through the voltage divider (in milliamps).
 
-    Returns:
-        A tuple containing:
-            best_r1: The value of resistor R1 (in ohms).
-            best_r2: The value of resistor R2 (in ohms).
-            best_error: The error between the calculated and desired output voltage.
-            current: The current through the voltage divider (in amps).
+    Returns
+    -------
+    tuple[float, float, float, float]
+        A tuple of (best_r1, best_r2, best_error, current).
     """
 
     best_r1: float = 0  # Best value for R1 (resistor 1)
